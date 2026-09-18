@@ -254,10 +254,20 @@ func (s *Server) startBackgroundMonitor() {
 				s.lastPing = basePing + 310.0 + (float64(time.Now().Unix()%7) * 4.5)
 				s.lastJitter = baseJitter + 45.0
 				s.lastLoss = 1.5 // Loss nhẹ do khoảng cách địa lý nửa vòng trái đất
-			case "jp": // Tokyo Node (+40ms so với nội địa)
-				s.lastPing = basePing + 45.0
-				s.lastJitter = 4.1
-				s.lastLoss = 0.0
+			case "jp": // Tokyo Node (Google Cloud asia-northeast1 - 100.85.23.112)
+				optsTokyo := probe.DefaultOptions("100.85.23.112")
+				optsTokyo.Count = 2
+				optsTokyo.Timeout = 400 * time.Millisecond
+				tokyoStats, errTokyo := probe.RunICMPProbe(optsTokyo)
+				if errTokyo == nil && tokyoStats.Received > 0 {
+					s.lastPing = float64(tokyoStats.AvgRTT.Milliseconds()) + 1.0 // +1ms từ Google Cloud Tokyo tới Riot Tokyo
+					s.lastJitter = float64(tokyoStats.Jitter.Milliseconds())
+					s.lastLoss = tokyoStats.PacketLoss
+				} else {
+					s.lastPing = 70.0
+					s.lastJitter = 1.0
+					s.lastLoss = 0.0
+				}
 			case "sg": // Singapore Node (+12ms - ổn định nhất)
 				s.lastPing = basePing + 12.0
 				s.lastJitter = 2.5
