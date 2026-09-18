@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoL ExitLag - Route Optimizer</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Header Navigation -->
+        <header class="app-header">
+            <div class="logo-group">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <h1>LOL EXIT LAG</h1>
+                    <span class="version-tag">v0.3.0 PRO</span>
+                </div>
+            </div>
+
+            <div class="game-status-pill" id="gameStatusPill">
+                <span class="status-dot"></span>
+                <span class="status-text" id="gameStatusText">Đang tìm game...</span>
+            </div>
+
+            <div class="power-control">
+                <button class="toggle-btn" id="toggleOptimizerBtn" onclick="toggleOptimizer()">
+                    <span class="power-icon">⚡</span>
+                    <span id="toggleBtnText">BẬT OPTIMIZER</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Dashboard Content -->
+        <main class="dashboard-grid">
+
+            <!-- Metrics Overview Cards -->
+            <section class="metrics-row">
+                <div class="metric-card ping-card">
+                    <div class="card-header">
+                        <span class="card-title">LATENCY (PING)</span>
+                        <span class="card-badge" id="pingBadge">TỐT</span>
+                    </div>
+                    <div class="metric-value">
+                        <span id="valPing">--</span>
+                        <span class="unit">ms</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="pingProgressBar" style="width: 30%;"></div>
+                    </div>
+                </div>
+
+                <div class="metric-card jitter-card">
+                    <div class="card-header">
+                        <span class="card-title">JITTER (BIẾN ĐỘNG TRỄ)</span>
+                        <span class="card-badge badge-blue">STABLE</span>
+                    </div>
+                    <div class="metric-value">
+                        <span id="valJitter">--</span>
+                        <span class="unit">ms</span>
+                    </div>
+                    <div class="card-subtext">Độ lệch gói tin liên tiếp</div>
+                </div>
+
+                <div class="metric-card loss-card">
+                    <div class="card-header">
+                        <span class="card-title">PACKET LOSS</span>
+                        <span class="card-badge badge-green" id="lossBadge">0% LOSS</span>
+                    </div>
+                    <div class="metric-value">
+                        <span id="valLoss">0.0</span>
+                        <span class="unit">%</span>
+                    </div>
+                    <div class="card-subtext">Tỷ lệ mất gói tin</div>
+                </div>
+
+                <div class="metric-card server-card">
+                    <div class="card-header">
+                        <span class="card-title">MATCH SERVER</span>
+                        <span class="card-badge badge-purple">VN2 PLATFORM</span>
+                    </div>
+                    <div class="metric-value-sm" id="valServerIP">
+                        103.149.28.1
+                    </div>
+                    <div class="card-subtext" id="valServerPort">Port UDP: 59406</div>
+                </div>
+            </section>
+
+            <!-- Real-time Latency Graph & Route Topology -->
+            <section class="chart-route-section">
+                <!-- Realtime Graph -->
+                <div class="glass-panel chart-panel">
+                    <div class="panel-header">
+                        <h3>📈 Biểu Đồ Latency Realtime</h3>
+                        <div class="chart-controls">
+                            <span class="live-pulse"></span>
+                            <span class="live-text">LIVE (1s)</span>
+                        </div>
+                    </div>
+                    <div class="canvas-wrapper">
+                        <canvas id="pingCanvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- Active Route Node Selector -->
+                <div class="glass-panel route-panel">
+                    <div class="panel-header">
+                        <h3>🌐 Tuyến Đường (Nodes Selection)</h3>
+                        <span class="panel-tag">AUTO SELECT</span>
+                    </div>
+
+                    <div class="node-list" id="nodeList">
+                        <!-- Node Item: Direct -->
+                        <div class="node-item active" onclick="selectNode('direct')">
+                            <div class="node-flag">🇻🇳</div>
+                            <div class="node-info">
+                                <div class="node-name">Đường Trực Tiếp (Direct ISP)</div>
+                                <div class="node-sub">ISP Mặc Định - Việt Nam</div>
+                            </div>
+                            <div class="node-ping-col">
+                                <span class="node-ping" id="pingNodeDirect">38 ms</span>
+                                <span class="node-jitter" id="jitterNodeDirect">Jitter: 33.2ms</span>
+                            </div>
+                            <div class="node-radio"></div>
+                        </div>
+
+                        <!-- Node Item: Singapore -->
+                        <div class="node-item" onclick="selectNode('sg')">
+                            <div class="node-flag">🇸🇬</div>
+                            <div class="node-info">
+                                <div class="node-name">Singapore Proxy Node</div>
+                                <div class="node-sub">AWS Singapore / Transit</div>
+                            </div>
+                            <div class="node-ping-col">
+                                <span class="node-ping text-green" id="pingNodeSG">39 ms</span>
+                                <span class="node-jitter" id="jitterNodeSG">Jitter: 3.7ms ⭐</span>
+                            </div>
+                            <div class="node-radio"></div>
+                        </div>
+
+                        <!-- Node Item: Tokyo -->
+                        <div class="node-item" onclick="selectNode('jp')">
+                            <div class="node-flag">🇯🇵</div>
+                            <div class="node-info">
+                                <div class="node-name">Tokyo Proxy Node</div>
+                                <div class="node-sub">AWS Tokyo / Fast Backbone</div>
+                            </div>
+                            <div class="node-ping-col">
+                                <span class="node-ping" id="pingNodeJP">74 ms</span>
+                                <span class="node-jitter" id="jitterNodeJP">Jitter: 4.1ms</span>
+                            </div>
+                            <div class="node-radio"></div>
+                        </div>
+
+                        <!-- Node Item: Taiwan -->
+                        <div class="node-item" onclick="selectNode('tw')">
+                            <div class="node-flag">🇹🇼</div>
+                            <div class="node-info">
+                                <div class="node-name">Taiwan Proxy Node</div>
+                                <div class="node-sub">GCP Taiwan / Direct Peering</div>
+                            </div>
+                            <div class="node-ping-col">
+                                <span class="node-ping" id="pingNodeTW">68 ms</span>
+                                <span class="node-jitter" id="jitterNodeTW">Jitter: 3.2ms</span>
+                            </div>
+                            <div class="node-radio"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Diagnostics & Console Stream -->
+            <section class="glass-panel console-panel">
+                <div class="panel-header">
+                    <h3>💻 Nhật Ký Hệ Thống (System Diagnostics Log)</h3>
+                    <button class="clear-btn" onclick="clearLogs()">Xóa log</button>
+                </div>
+                <div class="console-body" id="consoleLog">
+                    <div class="log-entry log-info">[SYSTEM] Khởi chạy LoL ExitLag Client v0.3.0 thành công.</div>
+                    <div class="log-entry log-success">[DISCOVER] Đã kết nối hệ thống giám sát tiến trình Windows.</div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>

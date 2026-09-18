@@ -10,21 +10,24 @@ import (
 
 	"github.com/codyzard/lol-exit-lag/internal/discover"
 	"github.com/codyzard/lol-exit-lag/internal/probe"
+	"github.com/codyzard/lol-exit-lag/internal/server"
 	"github.com/codyzard/lol-exit-lag/internal/trace"
 	"github.com/codyzard/lol-exit-lag/internal/tunnel"
 )
 
-const version = "v0.2.0"
+const version = "v0.3.0"
 
 func main() {
 	if len(os.Args) < 2 {
-		printHelp()
-		os.Exit(1)
+		runGUI()
+		return
 	}
 
 	subcommand := os.Args[1]
 
 	switch subcommand {
+	case "gui":
+		runGUI()
 	case "discover":
 		runDiscover()
 	case "probe":
@@ -49,6 +52,8 @@ func printHelp() {
 	fmt.Printf("   lol-exit-lag - Mini ExitLag Route Optimizer %s\n", version)
 	fmt.Println("=====================================================")
 	fmt.Println("Usage:")
+	fmt.Println("  lol-exit-lag                   Launch Desktop GUI Dashboard")
+	fmt.Println("  lol-exit-lag gui               Launch Desktop GUI Dashboard")
 	fmt.Println("  lol-exit-lag discover          Scan active League sockets & game server IP")
 	fmt.Println("  lol-exit-lag probe <ip/host>  Measure Ping, Jitter & Packet Loss")
 	fmt.Println("  lol-exit-lag trace <ip/host>  Traceroute path to target IP")
@@ -58,10 +63,18 @@ func printHelp() {
 	fmt.Println("=====================================================")
 }
 
+func runGUI() {
+	srv := server.NewServer()
+	err := srv.Start(8080)
+	if err != nil {
+		fmt.Printf("❌ Failed to start GUI server: %v\n", err)
+		os.Exit(1)
+	}
+}
+
 func runDiscover() {
 	fmt.Println("🔍 Scanning active League of Legends sockets & Game Logs...")
 
-	// 1. Scan Game Logs for exact Match Server IP
 	gameIP, gamePort, errLog := discover.FindGameServerFromLogs()
 	fmt.Println("\n=====================================================")
 	fmt.Println("🎮 MATCH GAME SERVER DETECTION")
@@ -86,7 +99,6 @@ func runDiscover() {
 		fmt.Println("💡 Tip: Start a game or Practice Tool match to generate active GameLogs.")
 	}
 
-	// 2. Scan active socket endpoints
 	fmt.Println("\n=====================================================")
 	fmt.Println("🌐 ACTIVE SOCKET CONNECTIONS")
 	fmt.Println("=====================================================")
