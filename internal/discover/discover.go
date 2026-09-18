@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 // ProcessEndpoint represents an active socket connection owned by a target process.
@@ -77,6 +78,7 @@ $results | ConvertTo-Json -Compress
 `
 
 	cmd := exec.Command("powershell", "-NoProfile", "-Command", psScript)
+	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: 0x08000000} // CREATE_NO_WINDOW
 	var out bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &out
@@ -120,6 +122,7 @@ func FindGameServerFromLogs() (string, int, error) {
 
 	// Also check custom Riot install path from environment or running process
 	psCmd := exec.Command("powershell", "-NoProfile", "-Command", `(Get-Process -Name "League of Legends" -ErrorAction SilentlyContinue).Path`)
+	psCmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: 0x08000000} // CREATE_NO_WINDOW
 	var pathOut bytes.Buffer
 	psCmd.Stdout = &pathOut
 	if psCmd.Run() == nil {
