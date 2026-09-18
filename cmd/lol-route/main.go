@@ -322,7 +322,7 @@ func requestAdminPrivileges() {
 	shell32 := syscall.NewLazyDLL("shell32.dll")
 	procShellExecuteW := shell32.NewProc("ShellExecuteW")
 
-	ret, _, _ := procShellExecuteW.Call(
+	_, _, _ = procShellExecuteW.Call(
 		0,
 		uintptr(unsafe.Pointer(verbPtr)),
 		uintptr(unsafe.Pointer(exePtr)),
@@ -331,8 +331,6 @@ func requestAdminPrivileges() {
 		1, // SW_SHOWNORMAL
 	)
 
-	// Nếu ShellExecute thành công gọi hộp thoại UAC (ret > 32), tắt tiến trình un-elevated hiện tại
-	if ret > 32 {
-		os.Exit(0)
-	}
+	// Thoát tiến trình un-elevated hiện tại (dù người dùng chọn Yes hay No)
+	os.Exit(0)
 }
