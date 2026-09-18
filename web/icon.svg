@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B0F19" />
+      <stop offset="50%" stop-color="#121829" />
+      <stop offset="100%" stop-color="#070A10" />
+    </linearGradient>
+    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F2FE" />
+      <stop offset="50%" stop-color="#4FACFE" />
+      <stop offset="100%" stop-color="#7F00FF" />
+    </linearGradient>
+    <linearGradient id="boltGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F5A0" />
+      <stop offset="50%" stop-color="#00F2FE" />
+      <stop offset="100%" stop-color="#FFFFFF" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="16" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background Shield / Hexagon Frame -->
+  <rect width="512" height="512" rx="110" fill="url(#bgGrad)" stroke="rgba(0, 242, 254, 0.3)" stroke-width="8"/>
+
+  <!-- Glowing Outer Pulse Ring -->
+  <circle cx="256" cy="256" r="190" fill="none" stroke="url(#primaryGrad)" stroke-width="6" stroke-dasharray="16 12" opacity="0.6"/>
+
+  <!-- Hexagonal Core Shape -->
+  <polygon points="256,90 390,165 390,345 256,420 122,345 122,165" 
+           fill="rgba(19, 27, 46, 0.85)" 
+           stroke="url(#primaryGrad)" 
+           stroke-width="12" 
+           filter="url(#glow)"/>
+
+  <!-- High-Speed Lightning Bolt (ExitLag Style) -->
+  <polygon points="280,130 180,270 250,270 230,380 340,240 270,240" 
+           fill="url(#boltGrad)" 
+           filter="url(#glow)"/>
+
+  <!-- Speed Wings / Velocity Accents -->
+  <path d="M140,230 L80,256 L140,282" fill="none" stroke="#00F2FE" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>
+  <path d="M372,230 L432,256 L372,282" fill="none" stroke="#00F2FE" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>
+</svg>
