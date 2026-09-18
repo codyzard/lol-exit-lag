@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/codyzard/lol-exit-lag/internal/discover"
+	"github.com/codyzard/lol-exit-lag/internal/hooker"
 	"github.com/codyzard/lol-exit-lag/internal/probe"
 )
 
@@ -118,7 +119,18 @@ func (s *Server) handleToggle(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&body); err == nil {
 		s.mu.Lock()
 		s.optimizerOn = body.Active
+		gameIP := s.lastServerIP
+		selectedNode := s.selectedNode
 		s.mu.Unlock()
+
+		if body.Active && gameIP != "" {
+			// Apply actual routing hook
+			gateway := getGatewayForNode(selectedNode)
+			_ = hooker.ApplyGameRoute(gameIP, gateway)
+		} else {
+			// Restore original Windows ISP routing
+			_ = hooker.RestoreGameRoute(gameIP)
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -136,10 +148,37 @@ func (s *Server) handleSelectNode(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&body); err == nil {
 		s.mu.Lock()
 		s.selectedNode = body.Node
+		gameIP := s.lastServerIP
+		isActive := s.optimizerOn
 		s.mu.Unlock()
+
+		if isActive && gameIP != "" {
+			gateway := getGatewayForNode(body.Node)
+			_ = hooker.ApplyGameRoute(gameIP, gateway)
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func getGatewayForNode(node string) string {
+	tailscaleGW := hooker.FindTailscaleAdapter()
+	defaultGW := hooker.GetDefaultGateway()
+
+	switch node {
+	case "sa": // Nam Mỹ
+		if tailscaleGW != "" {
+			return tailscaleGW
+		}
+		return defaultGW
+	case "jp", "sg", "tw":
+		if tailscaleGW != "" {
+			return tailscaleGW
+		}
+		return defaultGW
+	default:
+		return defaultGW
+	}
 }
 
 func (s *Server) startBackgroundMonitor() {
