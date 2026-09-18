@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -53,6 +54,7 @@ func RunICMPProbe(opts ProbeOptions) (*Statistics, error) {
 	// Windows system ping command
 	args := []string{"-n", strconv.Itoa(opts.Count), "-w", strconv.Itoa(int(opts.Timeout.Milliseconds())), opts.Target}
 	cmd := exec.Command("ping", args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: 0x08000000} // CREATE_NO_WINDOW
 	var out bytes.Buffer
 	cmd.Stdout = &out
 

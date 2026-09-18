@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 // HopInfo represents a single routing hop in path traceroute.
@@ -25,6 +26,7 @@ func RunTraceroute(target string, maxHops int) ([]HopInfo, error) {
 	}
 
 	cmd := exec.Command("tracert", "-d", "-h", strconv.Itoa(maxHops), target)
+	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: 0x08000000} // CREATE_NO_WINDOW
 	var out bytes.Buffer
 	cmd.Stdout = &out
 
