@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"os"
 	"os/exec"
 	"runtime"
 	"sync"
@@ -52,7 +53,7 @@ func NewServer() *Server {
 	}
 }
 
-// Start launches the local HTTP web server and auto-opens default browser window.
+// Start launches the local HTTP web server and auto-opens native desktop application window.
 func (s *Server) Start(port int) error {
 	subFS, err := fs.Sub(webFS, "web")
 	if err != nil {
@@ -74,12 +75,12 @@ func (s *Server) Start(port int) error {
 	go s.startBackgroundMonitor()
 
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
-	fmt.Printf("🚀 LoL ExitLag Dashboard GUI starting at http://%s\n", addr)
+	fmt.Printf("🚀 LoL ExitLag Desktop Window starting at http://%s\n", addr)
 
-	// Auto-open browser window
+	// Launch Native Desktop Application Window
 	go func() {
-		time.Sleep(800 * time.Millisecond)
-		openBrowser(fmt.Sprintf("http://%s", addr))
+		time.Sleep(600 * time.Millisecond)
+		openAppWindow(fmt.Sprintf("http://%s", addr))
 	}()
 
 	return http.ListenAndServe(addr, mux)
@@ -146,7 +147,6 @@ func (s *Server) startBackgroundMonitor() {
 	defer ticker.Stop()
 
 	for range ticker.C {
-		// 1. Try to discover game server IP
 		ip, port, err := discover.FindGameServerFromLogs()
 		targetIP := "103.149.28.1"
 		targetPort := 59406
@@ -158,7 +158,6 @@ func (s *Server) startBackgroundMonitor() {
 			}
 		}
 
-		// 2. Run high-speed probe
 		opts := probe.DefaultOptions(targetIP)
 		opts.Count = 3
 		opts.Timeout = 500 * time.Millisecond
@@ -176,17 +175,30 @@ func (s *Server) startBackgroundMonitor() {
 	}
 }
 
-func openBrowser(url string) {
-	var err error
-	switch runtime.GOOS {
-	case "windows":
-		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
-	case "darwin":
-		err = exec.Command("open", url).Start()
-	default:
-		err = exec.Command("xdg-open", url).Start()
-	}
-	if err != nil {
-		fmt.Printf("⚠️ Could not automatically launch browser: %v\n", err)
+// openAppWindow launches a standalone Desktop Application Window (App Mode) without browser tabs/bars.
+func openAppWindow(url string) {
+	if runtime.GOOS == "windows" {
+		browserPaths := []string{
+			`C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`,
+			`C:\Program Files\Microsoft\Edge\Application\msedge.exe`,
+			`C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`,
+			`C:\Program Files\Google\Chrome\Application\chrome.exe`,
+		}
+
+		for _, path := range browserPaths {
+			if _, err := os.Stat(path); err == nil {
+				// --app mode opens standalone desktop application window
+				cmd := exec.Command(path, fmt.Sprintf("--app=%s", url), "--window-size=1280,840", "--title=LoL ExitLag")
+				if err := cmd.Start(); err == nil {
+					return
+				}
+			}
+		}
+		// Fallback
+		exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+	} else if runtime.GOOS == "darwin" {
+		exec.Command("open", url).Start()
+	} else {
+		exec.Command("xdg-open", url).Start()
 	}
 }
