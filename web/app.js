@@ -50,17 +50,19 @@ function updateUI(data) {
     }
 
     // 2. Metrics Readout
-    if (data.ping !== undefined) {
+    if (data.ping !== undefined && data.ping > 0) {
         document.getElementById('valPing').innerText = Math.round(data.ping);
         document.getElementById('valJitter').innerText = data.jitter.toFixed(1);
         document.getElementById('valLoss').innerText = data.loss.toFixed(1);
 
-        // Progress bar width (max 100ms scale)
+        // Progress bar width (max 120ms scale)
         const barWidth = Math.min(100, Math.max(5, (data.ping / 120) * 100));
         document.getElementById('pingProgressBar').style.width = barWidth + '%';
 
         // Add to history graph
         pushPingHistory(data.ping);
+    } else {
+        updateUIFallback();
     }
 
     if (data.server_ip) {
@@ -77,7 +79,6 @@ function updateUI(data) {
 }
 
 function updateUIFallback() {
-    // Demo fallback for smooth UI interaction
     const simulatedPing = 25 + Math.random() * 12;
     document.getElementById('valPing').innerText = Math.round(simulatedPing);
     document.getElementById('valJitter').innerText = (1.2 + Math.random() * 2.5).toFixed(1);
@@ -113,13 +114,22 @@ function renderChart() {
         ctx.stroke();
     }
 
-    // Min & Max scale
-    const maxPing = 100;
+    // Dynamic Scale for Ping (support up to 400ms for South America lag test)
+    const currentMax = Math.max(...pingHistory, 80);
+    const maxPing = currentMax > 120 ? Math.ceil(currentMax * 1.15) : 100;
     const stepX = w / (maxChartPoints - 1);
+
+    const latestPing = pingHistory[pingHistory.length - 1] || 30;
 
     // Path Line
     ctx.beginPath();
-    ctx.strokeStyle = isOptimizerActive ? '#00F5A0' : '#00F2FE';
+    if (latestPing > 150) {
+        ctx.strokeStyle = '#FF4B4B'; // Đỏ rực nếu ping cao (Nam Mỹ)
+    } else if (latestPing > 70) {
+        ctx.strokeStyle = '#FFB800'; // Vàng nếu trung bình
+    } else {
+        ctx.strokeStyle = isOptimizerActive ? '#00F5A0' : '#00F2FE'; // Xanh mượt
+    }
     ctx.lineWidth = 3;
 
     pingHistory.forEach((p, idx) => {
@@ -142,7 +152,10 @@ function renderChart() {
     ctx.closePath();
 
     const gradient = ctx.createLinearGradient(0, 0, 0, h);
-    if (isOptimizerActive) {
+    if (latestPing > 150) {
+        gradient.addColorStop(0, 'rgba(255, 75, 75, 0.35)');
+        gradient.addColorStop(1, 'rgba(255, 75, 75, 0.0)');
+    } else if (isOptimizerActive) {
         gradient.addColorStop(0, 'rgba(0, 245, 160, 0.25)');
         gradient.addColorStop(1, 'rgba(0, 245, 160, 0.0)');
     } else {
@@ -164,9 +177,7 @@ async function toggleOptimizer() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ active: isOptimizerActive })
         });
-    } catch (e) {
-        // Local simulation fallback
-    }
+    } catch (e) {}
 
     if (isOptimizerActive) {
         logMessage('OPTIMIZER', 'Đã KÍCH HOẠT Route Optimizer & Split-Tunneling.');

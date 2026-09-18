@@ -114,13 +114,22 @@ function renderChart() {
         ctx.stroke();
     }
 
-    // Min & Max scale
-    const maxPing = 100;
+    // Dynamic Scale for Ping (support up to 400ms for South America lag test)
+    const currentMax = Math.max(...pingHistory, 80);
+    const maxPing = currentMax > 120 ? Math.ceil(currentMax * 1.15) : 100;
     const stepX = w / (maxChartPoints - 1);
+
+    const latestPing = pingHistory[pingHistory.length - 1] || 30;
 
     // Path Line
     ctx.beginPath();
-    ctx.strokeStyle = isOptimizerActive ? '#00F5A0' : '#00F2FE';
+    if (latestPing > 150) {
+        ctx.strokeStyle = '#FF4B4B'; // Đỏ rực nếu ping cao (Nam Mỹ)
+    } else if (latestPing > 70) {
+        ctx.strokeStyle = '#FFB800'; // Vàng nếu trung bình
+    } else {
+        ctx.strokeStyle = isOptimizerActive ? '#00F5A0' : '#00F2FE'; // Xanh mượt
+    }
     ctx.lineWidth = 3;
 
     pingHistory.forEach((p, idx) => {
@@ -143,7 +152,10 @@ function renderChart() {
     ctx.closePath();
 
     const gradient = ctx.createLinearGradient(0, 0, 0, h);
-    if (isOptimizerActive) {
+    if (latestPing > 150) {
+        gradient.addColorStop(0, 'rgba(255, 75, 75, 0.35)');
+        gradient.addColorStop(1, 'rgba(255, 75, 75, 0.0)');
+    } else if (isOptimizerActive) {
         gradient.addColorStop(0, 'rgba(0, 245, 160, 0.25)');
         gradient.addColorStop(1, 'rgba(0, 245, 160, 0.0)');
     } else {

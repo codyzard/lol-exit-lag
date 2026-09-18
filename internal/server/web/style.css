@@ -383,6 +383,10 @@ body {
     color: var(--primary-green);
 }
 
+.text-red {
+    color: var(--accent-red) !important;
+}
+
 .node-jitter {
     font-size: 11px;
     color: var(--text-muted);

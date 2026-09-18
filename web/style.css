@@ -377,11 +377,14 @@ body {
     font-size: 15px;
     font-weight: 700;
     font-family: var(--font-mono);
-
 }
 
 .text-green {
     color: var(--primary-green);
+}
+
+.text-red {
+    color: var(--accent-red) !important;
 }
 
 .node-jitter {

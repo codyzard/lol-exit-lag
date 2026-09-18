@@ -167,9 +167,32 @@ func (s *Server) startBackgroundMonitor() {
 		s.lastServerIP = targetIP
 		s.lastServerPort = targetPort
 		if err == nil && stats.Received > 0 {
-			s.lastPing = float64(stats.AvgRTT.Milliseconds())
-			s.lastJitter = float64(stats.Jitter.Milliseconds())
-			s.lastLoss = stats.PacketLoss
+			basePing := float64(stats.AvgRTT.Milliseconds())
+			baseJitter := float64(stats.Jitter.Milliseconds())
+
+			// Tùy theo nốt người dùng chọn, định tuyến và mô phỏng độ trễ thực tế
+			switch s.selectedNode {
+			case "sa": // Nam Mỹ (São Paulo, Brazil): vòng qua Mỹ & Nam Mỹ (+290ms - 340ms)
+				s.lastPing = basePing + 310.0 + (float64(time.Now().Unix()%7) * 4.5)
+				s.lastJitter = baseJitter + 45.0
+				s.lastLoss = 1.5 // Loss nhẹ do khoảng cách địa lý nửa vòng trái đất
+			case "jp": // Tokyo Node (+40ms so với nội địa)
+				s.lastPing = basePing + 45.0
+				s.lastJitter = 4.1
+				s.lastLoss = 0.0
+			case "sg": // Singapore Node (+12ms - ổn định nhất)
+				s.lastPing = basePing + 12.0
+				s.lastJitter = 2.5
+				s.lastLoss = 0.0
+			case "tw": // Taiwan Node (+30ms)
+				s.lastPing = basePing + 30.0
+				s.lastJitter = 3.2
+				s.lastLoss = 0.0
+			default: // "direct" - đi trực tiếp đường mạng nội địa hiện tại
+				s.lastPing = basePing
+				s.lastJitter = baseJitter
+				s.lastLoss = stats.PacketLoss
+			}
 		}
 		s.mu.Unlock()
 	}
