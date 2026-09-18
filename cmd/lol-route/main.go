@@ -4,11 +4,17 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"runtime"
+	"strings"
+	"syscall"
 	"text/tabwriter"
 	"time"
+	"unsafe"
 
 	"github.com/codyzard/lol-exit-lag/internal/discover"
+	"github.com/codyzard/lol-exit-lag/internal/hooker"
 	"github.com/codyzard/lol-exit-lag/internal/probe"
 	"github.com/codyzard/lol-exit-lag/internal/server"
 	"github.com/codyzard/lol-exit-lag/internal/trace"
@@ -18,6 +24,12 @@ import (
 const version = "v0.3.0"
 
 func main() {
+	// Bắt buộc yêu cầu quyền Administrator để can thiệp bảng định tuyến Windows (route add/delete)
+	if runtime.GOOS == "windows" && !isRunningAsAdmin() {
+		requestAdminPrivileges()
+		return
+	}
+
 	if len(os.Args) < 2 {
 		runGUI()
 		return
@@ -64,6 +76,15 @@ func printHelp() {
 }
 
 func runGUI() {
+	// Bắt tín hiệu ngắt OS để dọn dẹp sạch routing trước khi tắt
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		hooker.RestoreAllRoutes()
+		os.Exit(0)
+	}()
+
 	srv := server.NewServer()
 	err := srv.Start(8080)
 	if err != nil {
@@ -262,5 +283,56 @@ func runTunnel(args []string) {
 
 	default:
 		fmt.Printf("Unknown tunnel command: %s\n", args[0])
+	}
+}
+
+// isRunningAsAdmin kiểm tra xem tiến trình hiện tại có đang chạy dưới quyền Administrator hay không
+func isRunningAsAdmin() bool {
+	shell32 := syscall.NewLazyDLL("shell32.dll")
+	procIsUserAnAdmin := shell32.NewProc("IsUserAnAdmin")
+	ret, _, _ := procIsUserAnAdmin.Call()
+	return ret != 0
+}
+
+// requestAdminPrivileges tự động kích hoạt hộp thoại UAC (Run as Administrator) của Windows
+func requestAdminPrivileges() {
+	exePath, err := os.Executable()
+	if err != nil {
+		return
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		cwd = filepath.Dir(exePath)
+	}
+
+	verbPtr, _ := syscall.UTF16PtrFromString("runas")
+	exePtr, _ := syscall.UTF16PtrFromString(exePath)
+	cwdPtr, _ := syscall.UTF16PtrFromString(cwd)
+
+	var args string
+	if len(os.Args) > 1 {
+		args = strings.Join(os.Args[1:], " ")
+	}
+	var argsPtr *uint16
+	if args != "" {
+		argsPtr, _ = syscall.UTF16PtrFromString(args)
+	}
+
+	shell32 := syscall.NewLazyDLL("shell32.dll")
+	procShellExecuteW := shell32.NewProc("ShellExecuteW")
+
+	ret, _, _ := procShellExecuteW.Call(
+		0,
+		uintptr(unsafe.Pointer(verbPtr)),
+		uintptr(unsafe.Pointer(exePtr)),
+		uintptr(unsafe.Pointer(argsPtr)),
+		uintptr(unsafe.Pointer(cwdPtr)),
+		1, // SW_SHOWNORMAL
+	)
+
+	// Nếu ShellExecute thành công gọi hộp thoại UAC (ret > 32), tắt tiến trình un-elevated hiện tại
+	if ret > 32 {
+		os.Exit(0)
 	}
 }

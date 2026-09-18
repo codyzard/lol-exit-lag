@@ -235,3 +235,11 @@ function clearLogs() {
     const box = document.getElementById('consoleLog');
     if (box) box.innerHTML = '';
 }
+
+// Khi người dùng bấm dấu [X] đóng cửa sổ: Tự động gửi beacon dọn dẹp routing và tắt tiến trình chạy ngầm
+window.addEventListener('beforeunload', () => {
+    navigator.sendBeacon('/api/exit');
+});
+window.addEventListener('pagehide', () => {
+    navigator.sendBeacon('/api/exit');
+});

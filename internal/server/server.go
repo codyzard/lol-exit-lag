@@ -36,14 +36,16 @@ type StatusResponse struct {
 }
 
 type Server struct {
-	mu             sync.Mutex
-	optimizerOn    bool
-	selectedNode   string
-	lastServerIP   string
-	lastServerPort int
-	lastPing       float64
-	lastJitter     float64
-	lastLoss       float64
+	mu              sync.Mutex
+	optimizerOn     bool
+	selectedNode    string
+	lastServerIP    string
+	lastServerPort  int
+	lastPing        float64
+	lastJitter      float64
+	lastLoss        float64
+	lastClientSeen  time.Time
+	clientConnected bool
 }
 
 // NewServer creates a new local dashboard server instance.
@@ -71,9 +73,13 @@ func (s *Server) Start(port int) error {
 	mux.HandleFunc("/api/status", s.handleStatus)
 	mux.HandleFunc("/api/toggle", s.handleToggle)
 	mux.HandleFunc("/api/select-node", s.handleSelectNode)
+	mux.HandleFunc("/api/exit", s.handleExit)
 
 	// Background polling worker for real-time metrics
 	go s.startBackgroundMonitor()
+
+	// Heartbeat watchdog: automatically restores routes and kills process when window is closed
+	go s.startHeartbeatWatchdog()
 
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	fmt.Printf("🚀 LoL ExitLag Desktop Window starting at http://%s\n", addr)
@@ -89,6 +95,8 @@ func (s *Server) Start(port int) error {
 
 func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
+	s.lastClientSeen = time.Now()
+	s.clientConnected = true
 	defer s.mu.Unlock()
 
 	resp := StatusResponse{
@@ -159,6 +167,37 @@ func (s *Server) handleSelectNode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) handleExit(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	go func() {
+		// Dọn dẹp sạch sẽ toàn bộ route đã bẻ
+		hooker.RestoreAllRoutes()
+		time.Sleep(150 * time.Millisecond)
+		// Thoát vĩnh viễn tiến trình
+		os.Exit(0)
+	}()
+}
+
+func (s *Server) startHeartbeatWatchdog() {
+	// Chờ 8 giây cho cửa sổ Edge/Chrome khởi động và gọi /api/status lần đầu
+	time.Sleep(8 * time.Second)
+	ticker := time.NewTicker(1500 * time.Millisecond)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		s.mu.Lock()
+		connected := s.clientConnected
+		lastSeen := s.lastClientSeen
+		s.mu.Unlock()
+
+		// Nếu cửa sổ đã từng kết nối, nhưng ngắt quãng quá 4 giây (người dùng bấm dấu X)
+		if connected && time.Since(lastSeen) > 4*time.Second {
+			hooker.RestoreAllRoutes()
+			os.Exit(0)
+		}
+	}
 }
 
 func getGatewayForNode(node string) string {
